@@ -11,10 +11,11 @@ columns = ['create', 'modify', 'delete', 'harmful']
 features = changesets[columns]
 features = features.dropna()
 
-model = joblib.load('gabbar.pkl')
+model = joblib.load('gabbar/models/gabbar.pkl')
 
-for feature in features.values:
+for (i, feature) in enumerate(features.values):
     prediction = model.predict([feature[:-1]])
-    if prediction == True:
+    if prediction != True:
         print feature
+        print changesets.iloc[i]
         break
