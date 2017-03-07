@@ -17,7 +17,7 @@ setup(name='gabbar',
       author_email='team@mapbox.com',
       url='https://github.com/mapbox/gabbar',
       license='MIT',
-      packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
+      packages=find_packages(exclude=['ez_setup', 'examples', 'tests', 'notebooks']),
       include_package_data=True,
       zip_safe=False,
       install_requires=[
