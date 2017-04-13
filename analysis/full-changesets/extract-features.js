@@ -47,7 +47,7 @@ function isHarmful(changesetID, osmchaChangesets) {
 function getFeaturesCreated(changeset) {
     let created = [];
     for (var feature of changeset.features) {
-        if (feature.properties.action === 'create') created.push(feature);
+        if (feature.properties.action === 'create') created.push([feature, ]);
     }
     return created;
 }
@@ -145,15 +145,41 @@ function getChangesetBBOX(changeset) {
 }
 
 /**
+ * Return count of features by type.
+ * @param {Object} changeset Geojson representation of changeset.
+ * @returns {Object} Count of features by type as {node: 4, way: 1, relation: 0}
+ */
+function getFeatureTypeCounts(changeset) {
+    let counts = {
+        node: 0,
+        way: 0,
+        relation: 0
+    };
+    let featuresCreated = getFeaturesCreated(changeset);
+    let featuresModified = getFeaturesModified(changeset);
+    let featuresDeleted = getFeaturesDeleted(changeset);
+
+    var features = featuresCreated.concat(featuresModified, featuresDeleted);
+    for (var version of features) {
+        var newVersion = version[0];
+        var featureType = newVersion.properties.type;
+        counts[featureType] += 1;
+    }
+    return counts;
+}
+
+/**
  * Print features of changeset to use for machine learning.
  * @param {Object} realChangeset JSON version of changeset.
  * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
  * @param {Object} callback Function to call once done.
  */
 function extractFeatures(realChangeset, osmchaChangesets, callback) {
-    var changeset = parser(realChangeset);
-    var changesetID = realChangeset['metadata']['id'];
-    var userID = realChangeset['metadata']['uid'];
+    let changeset = parser(realChangeset);
+    let featureTypeCounts = getFeatureTypeCounts(changeset);
+
+    let changesetID = realChangeset['metadata']['id'];
+    let userID = realChangeset['metadata']['uid'];
 
     var header = [
         'changeset_id',
@@ -165,7 +191,10 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
         'user_name',
         'user_changesets',
         'user_features',
-        'changeset_bbox_area'
+        'changeset_bbox_area',
+        'node_count',
+        'way_count',
+        'relation_count'
     ];
     if (!headerPrinted) {
         console.log(header.join(','));
@@ -188,6 +217,9 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
             userDetails['changeset_count'],
             userDetails['num_changes'],
             getBBOXArea(getChangesetBBOX(realChangeset)),
+            featureTypeCounts['node'],
+            featureTypeCounts['way'],
+            featureTypeCounts['relation']
         ];
 
         csv.stringify([features], (error, resultsAsString) => {
