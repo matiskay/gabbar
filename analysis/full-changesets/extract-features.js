@@ -113,14 +113,20 @@ function getFeaturesDeleted(changeset) {
     return deleted;
 }
 
-function getHarmfulFromOsmcha(changesetID, callback) {
+function isHarmful(changesetID) {
+    for (var i = 0; i < changesetsFromOsmcha.length; i++) {
+        var row = changesetsFromOsmcha[i];
+        if (row[0] === changesetID) return row[1];
+    }
+}
+
+var changesetsFromOsmcha = [];
+function getChangesetsFromOsmcha(callback) {
     csv.parse(fs.readFileSync(path.join(__dirname, 'full-changeset-ids.csv')), function (error, rows) {
         if (error) return callback(error);
 
-        for (var i = 0; i < rows.length; i++) {
-            var row = rows[i];
-            if (row[0] === changesetID) return callback(null, row[1]);
-        }
+        changesetsFromOsmcha = rows;
+        return callback();
     });
 }
 
@@ -132,23 +138,20 @@ function extractFeatures(realChangeset, callback) {
 
     var changesetID = realChangeset['metadata']['id']
 
-    getHarmfulFromOsmcha(changesetID, function (error, harmful) {
-        if (error) throw error;
-
-        var features = {
-            'changeset_id': changesetID,
-            'harmful': harmful,
-            'features_created': getFeaturesCreated(changeset).length,
-            'features_modified': getFeaturesModified(changeset).length,
-            'features_deleted': getFeaturesDeleted(changeset).length,
-        };
-        printFeatures(features, function (error, result) {
-            return callback();  // Nothing to return.
-        });
+    var features = {
+        'changeset_id': changesetID,
+        'harmful': isHarmful(changesetID),
+        'features_created': getFeaturesCreated(changeset).length,
+        'features_modified': getFeaturesModified(changeset).length,
+        'features_deleted': getFeaturesDeleted(changeset).length,
+    };
+    printFeatures(features, function (error, result) {
+        return callback();  // Nothing to return.
     });
 }
 
 const q = queue(1);
+q.defer(getChangesetsFromOsmcha);
 
 const rl = readline.createInterface({
     input: fs.createReadStream(argv.changesets),
