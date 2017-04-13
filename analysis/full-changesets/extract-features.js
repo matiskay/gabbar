@@ -23,12 +23,26 @@ if (!argv.changesets) {
     return;
 }
 
+// To track of csv header was printed or not.
+var headerPrinted = false;
+
+/**
+ * Return if changeset is harmful or not using dump from osmcha.
+ * @param {string} changesetID ID of the changeset.
+ * @param {Object} osmchaChangesets Array of changesets from osmcha.
+ * @returns {boolean} Is the changeset harmful or not.
+ */
 function isHarmful(changesetID, osmchaChangesets) {
     for (var osmchaChangeset of osmchaChangesets) {
         if (osmchaChangeset[0] === changesetID) return osmchaChangeset[1];
     }
 }
 
+/**
+ * Return features created in the changeset.
+ * @param {Object} changeset Geojson representation of changeset.
+ * @returns {Object} Array of array with just the new feature as `[[newVersion], ...]`.
+ */
 function getFeaturesCreated(changeset) {
     let created = [];
     for (var feature of changeset.features) {
@@ -37,6 +51,11 @@ function getFeaturesCreated(changeset) {
     return created;
 }
 
+/**
+ * Return features modified in the changeset.
+ * @param {Object} changeset Geojson representation of changeset.
+ * @returns {Object} Array of array with new and old version of feature as `[[newVersion, oldVersion], ...]`.
+ */
 function getFeaturesModified(changeset) {
     let modified = [];
     let seenFeatures = [];
@@ -50,6 +69,11 @@ function getFeaturesModified(changeset) {
     return modified;
 }
 
+/**
+ * Return features deleted in the changeset.
+ * @param {Object} changeset Geojson representation of changeset.
+ * @returns {Object} Array of array with new and old version of feature as `[[newVersion, oldVersion], ...]`.
+ */
 function getFeaturesDeleted(changeset) {
     let deleted = [];
     let seenFeatures = [];
@@ -63,6 +87,12 @@ function getFeaturesDeleted(changeset) {
     return deleted;
 }
 
+/**
+ * Return new and old version of a feature from the changeset.
+ * @param {Object} changeset Geojson representation of changeset.
+ * @param {Object} touchedFeature Geojson representation of feature who's new and old versions is to be returned.
+ * @returns {Object} Array of new and old version of feature as `[newVersion, oldVersion]`.
+ */
 function getNewAndOldVersion(changeset, touchedFeature) {
     var versions = [];
     for (var feature of changeset.features) {
@@ -72,7 +102,12 @@ function getNewAndOldVersion(changeset, touchedFeature) {
     else return [versions[1], versions[0]];
 }
 
-var headerPrinted = false;
+/**
+ * Print features of changeset to use for machine learning.
+ * @param {Object} realChangeset JSON version of changeset.
+ * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
+ * @param {Object} callback Function to call once done.
+ */
 function extractFeatures(realChangeset, osmchaChangesets, callback) {
     var changeset = parser(realChangeset);
     var changesetID = realChangeset['metadata']['id'];
@@ -104,6 +139,10 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
     });
 }
 
+/**
+ * Get list of changesets from osmcha.
+ * @returns {Object} Array of changesets from osmcha.
+ */
 function getOsmchaChangesets() {
     return new Promise((resolve, reject) => {
         var file = fs.readFileSync(path.join(__dirname, 'full-changeset-ids.csv'));
