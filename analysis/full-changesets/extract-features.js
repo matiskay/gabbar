@@ -13,6 +13,7 @@ const path = require('path');
 const parser = require('real-changesets-parser');
 let queue = require('d3-queue').queue;
 var turf = require('@turf/turf');
+const _ = require("underscore");
 
 if (!argv.changesets) {
     console.log('');
@@ -224,6 +225,36 @@ function getPrimaryTagCounts(features) {
 }
 
 /**
+ * Get features modified by property.
+ * @param {Object} features Array of features as [[newVersion, oldVersion]].
+ * @returns {Object} Features which are property based modifications.
+ */
+function getPropertyModifications(features) {
+    let modifications = [];
+    for (let versions of features) {
+        let newVersion = versions[0];
+        let oldVersion = versions[1];
+        if (!(_.isEqual(newVersion.properties.tags, oldVersion.properties.tags))) modifications.push(versions);
+    }
+    return modifications;
+}
+
+/**
+ * Get features modified by geometry.
+ * @param {Object} features Array of features as [[newVersion, oldVersion]].
+ * @returns {Object} Features which are geometry based modifications.
+ */
+function getGeometryModifications(features) {
+    let modifications = [];
+    for (let versions of features) {
+        let newVersion = versions[0];
+        let oldVersion = versions[1];
+        if (JSON.stringify(newVersion.geometry) !== JSON.stringify(oldVersion.geometry)) modifications.push(versions);
+    }
+    return modifications;
+}
+
+/**
  * Print features of changeset to use for machine learning.
  * @param {Object} realChangeset JSON version of changeset.
  * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
@@ -256,7 +287,9 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
         'changeset_bbox_area',
         'node_count',
         'way_count',
-        'relation_count'
+        'relation_count',
+        'property_modifications',
+        'geometry_modifications'
     ];
     // Concat primary tag keys.
     header = header.concat(PRIMARY_TAGS);
@@ -283,7 +316,9 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
             getBBOXArea(getChangesetBBOX(realChangeset)),
             featureTypeCounts['node'],
             featureTypeCounts['way'],
-            featureTypeCounts['relation']
+            featureTypeCounts['relation'],
+            getPropertyModifications(getFeaturesModified(changeset)).length,
+            getGeometryModifications(getFeaturesModified(changeset)).length
         ];
         // Concat primary tag counts.
         features = features.concat(primaryTagCounts);
