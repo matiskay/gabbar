@@ -25,8 +25,9 @@ function downloadChangeset(changesetID, callback) {
         if (error) return callback(error);
 
         try {
+            // Check if the result was a proper JSON.
             var changeset = parser(JSON.parse(body));
-            console.log(JSON.stringify(changeset));
+            console.log(body);
         } catch(error) {
             // TODO: Temporarily skip when error.
         }
