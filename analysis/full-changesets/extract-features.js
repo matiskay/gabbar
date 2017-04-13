@@ -103,6 +103,27 @@ function getNewAndOldVersion(changeset, touchedFeature) {
 }
 
 /**
+ * Return details of OSM mapper using osm-comments-api.
+ * @param {string} userID ID of mapper on OSM.
+ * @returns {Object} Details of user as JSON.
+ */
+function getUserDetails(userID) {
+    return new Promise((resolve, reject) => {
+        let filename = path.join(__dirname, 'users/' + userID + '.json');
+
+        // If file exists locally, use it.
+        if(fs.existsSync(filename)) return resolve(JSON.parse(fs.readFileSync(filename)));
+
+        let url = 'https://osm-comments-api.mapbox.com/api/v1/users/id/' + userID;
+        request(url, (error, response, body) => {
+            if (error || response.statusCode !== 200) resolve({});
+            fs.writeFileSync(filename, body);
+            resolve(JSON.parse(body));
+        });
+    });
+}
+
+/**
  * Print features of changeset to use for machine learning.
  * @param {Object} realChangeset JSON version of changeset.
  * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
@@ -111,31 +132,49 @@ function getNewAndOldVersion(changeset, touchedFeature) {
 function extractFeatures(realChangeset, osmchaChangesets, callback) {
     var changeset = parser(realChangeset);
     var changesetID = realChangeset['metadata']['id'];
+    var userID = realChangeset['metadata']['uid'];
 
     var header = [
         'changeset_id',
         'harmful',
         'features_created',
         'features_modified',
-        'features_deleted'
+        'features_deleted',
+        'user_id',
+        'user_name',
+        'user_changesets',
+        'user_features'
     ];
     if (!headerPrinted) {
         console.log(header.join(','));
         headerPrinted = true;
     }
 
-    var features = [
-        changesetID,
-        isHarmful(changesetID, osmchaChangesets),
-        getFeaturesCreated(changeset).length,
-        getFeaturesModified(changeset).length,
-        getFeaturesDeleted(changeset).length
+    let q = [
+        getUserDetails(userID)
     ];
+    Promise.all(q).then(results => {
+        let userDetails = results[0];
+        let features = [
+            changesetID,
+            isHarmful(changesetID, osmchaChangesets),
+            getFeaturesCreated(changeset).length,
+            getFeaturesModified(changeset).length,
+            getFeaturesDeleted(changeset).length,
+            userID,
+            realChangeset['metadata']['user'],
+            userDetails['changeset_count'],
+            userDetails['num_changes'],
+        ];
 
-    csv.stringify([features], (error, resultsAsString) => {
-        if (error) throw error;
-        process.stdout.write(resultsAsString);
-        callback();
+        csv.stringify([features], (error, resultsAsString) => {
+            if (error) throw error;
+            process.stdout.write(resultsAsString);
+            callback();
+        });
+    })
+    .catch(error => {
+        throw error;
     });
 }
 
@@ -156,7 +195,7 @@ function getOsmchaChangesets() {
 function main() {
     getOsmchaChangesets()
     .then(osmchaChangesets => {
-        var q = queue(1);
+        var q = queue(5);
         const reader = readline.createInterface({
             input: fs.createReadStream(argv.changesets),
         });
