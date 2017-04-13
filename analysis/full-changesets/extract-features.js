@@ -10,6 +10,7 @@ const fs = require('fs');
 const request = require('request');
 let queue = require('d3-queue').queue;
 const csv = require('csv');
+const path = require('path');
 const parser = require('real-changesets-parser');
 
 if (!argv.changesets) {
@@ -26,6 +27,7 @@ var header;
 function printFeatures(features, callback) {
     var columns = [
         'changeset_id',
+        'harmful',
         'features_created',
         'features_modified',
         'features_deleted'
@@ -111,20 +113,38 @@ function getFeaturesDeleted(changeset) {
     return deleted;
 }
 
+function getHarmfulFromOsmcha(changesetID, callback) {
+    csv.parse(fs.readFileSync(path.join(__dirname, 'full-changeset-ids.csv')), function (error, rows) {
+        if (error) return callback(error);
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row[0] === changesetID) return callback(null, row[1]);
+        }
+    });
+}
+
 function extractFeatures(realChangeset, callback) {
     var changeset = parser(realChangeset);
 
     // console.log(JSON.stringify(changeset));
     // console.log(JSON.stringify(getFeaturesModified(changeset)));
 
-    var features = {
-        'changeset_id': realChangeset['metadata']['id'],
-        'features_created': getFeaturesCreated(changeset).length,
-        'features_modified': getFeaturesModified(changeset).length,
-        'features_deleted': getFeaturesDeleted(changeset).length,
-    };
-    printFeatures(features, function (error, result) {
-        return callback();  // Nothing to return.
+    var changesetID = realChangeset['metadata']['id']
+
+    getHarmfulFromOsmcha(changesetID, function (error, harmful) {
+        if (error) throw error;
+
+        var features = {
+            'changeset_id': changesetID,
+            'harmful': harmful,
+            'features_created': getFeaturesCreated(changeset).length,
+            'features_modified': getFeaturesModified(changeset).length,
+            'features_deleted': getFeaturesDeleted(changeset).length,
+        };
+        printFeatures(features, function (error, result) {
+            return callback();  // Nothing to return.
+        });
     });
 }
 
