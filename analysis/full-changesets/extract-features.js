@@ -44,7 +44,7 @@ let PRIMARY_TAGS = [
     'military',
     'natural',
     'office',
-    'places',
+    'place',
     'power',
     'public_transport',
     'railway',
