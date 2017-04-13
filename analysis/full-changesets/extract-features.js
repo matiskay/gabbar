@@ -31,44 +31,43 @@ function isHarmful(changesetID, osmchaChangesets) {
 
 function getFeaturesCreated(changeset) {
     let created = [];
-    changeset.features.map(feature => {
+    for (var feature of changeset.features) {
         if (feature.properties.action === 'create') created.push(feature);
-    });
+    }
     return created;
 }
 
 function getFeaturesModified(changeset) {
     let modified = [];
     let seenFeatures = [];
-    changeset.features.map(feature => {
+    for (var feature of changeset.features) {
         let featureID = feature.properties.id;
         if ((feature.properties.action === 'modify') && (seenFeatures.indexOf(featureID) === -1)) {
             modified.push(getNewAndOldVersion(changeset, feature));
             seenFeatures.push(featureID);
         }
-    });
+    }
     return modified;
 }
 
 function getFeaturesDeleted(changeset) {
     let deleted = [];
     let seenFeatures = [];
-    changeset.features.map(feature => {
+    for (var feature of changeset.features) {
         var featureID = feature.properties.id;
-
         if ((feature.properties.action === 'delete') && (seenFeatures.indexOf(featureID) === -1)) {
             deleted.push(getNewAndOldVersion(changeset, feature));
             seenFeatures.push(featureID);
         }
-    });
+    }
     return deleted;
 }
 
 function getNewAndOldVersion(changeset, touchedFeature) {
     var versions = [];
-    changeset.features.map(feature => {
+    for (var feature of changeset.features) {
         if (feature.properties.id === touchedFeature.properties.id) versions.push(feature);
-    });
+    }
     if (versions[0].properties.version > versions[1].properties.version) return [versions[0], versions[1]];
     else return [versions[1], versions[0]];
 }
