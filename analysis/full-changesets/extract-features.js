@@ -26,6 +26,34 @@ if (!argv.changesets) {
 
 // To track of csv header was printed or not.
 var headerPrinted = false;
+let PRIMARY_TAGS = [
+    'aerialway',
+    'aeroway',
+    'amenity',
+    'barrier',
+    'boundary',
+    'building',
+    'craft',
+    'emergency',
+    'geological',
+    'highway',
+    'historic',
+    'landuse',
+    'leisure',
+    'man_made',
+    'military',
+    'natural',
+    'office',
+    'places',
+    'power',
+    'public_transport',
+    'railway',
+    'route',
+    'shop',
+    'sport',
+    'tourism',
+    'waterway'
+];
 
 /**
  * Return if changeset is harmful or not using dump from osmcha.
@@ -149,21 +177,48 @@ function getChangesetBBOX(changeset) {
  * @param {Object} changeset Geojson representation of changeset.
  * @returns {Object} Count of features by type as {node: 4, way: 1, relation: 0}
  */
-function getFeatureTypeCounts(changeset) {
+function getFeatureTypeCounts(features) {
     let counts = {
         node: 0,
         way: 0,
         relation: 0
     };
-    let featuresCreated = getFeaturesCreated(changeset);
-    let featuresModified = getFeaturesModified(changeset);
-    let featuresDeleted = getFeaturesDeleted(changeset);
-
-    var features = featuresCreated.concat(featuresModified, featuresDeleted);
     for (var version of features) {
         var newVersion = version[0];
         var featureType = newVersion.properties.type;
         counts[featureType] += 1;
+    }
+    return counts;
+}
+
+
+/**
+ * Return primary tags of a feature.
+ * @param {Object} feature A feature in geojson format.
+ * @returns {Object} Array of primary tags in the feature.
+ */
+function getPrimaryTags(feature) {
+    let primaryTags = []
+    for (var tag in feature.properties.tags) {
+        if (PRIMARY_TAGS.indexOf(tag) !== -1) primaryTags.push(tag);
+    }
+    return primaryTags;
+}
+
+/**
+ * Return number of primary tags from all features in the changeset.
+ * @param {Object} features Array of features as [[newVersion, oldVersion]].
+ * @returns {Object} Array of counts of primaryTags.
+ */
+function getPrimaryTagCounts(features) {
+    let counts = [];
+    for (let i = 0; i < PRIMARY_TAGS.length; i++) {
+        counts[i] = 0;
+    }
+    for (let version of features) {
+        for (let primaryTag of getPrimaryTags(version[0])) {
+            counts[PRIMARY_TAGS.indexOf(primaryTag)] += 1;
+        }
     }
     return counts;
 }
@@ -176,7 +231,14 @@ function getFeatureTypeCounts(changeset) {
  */
 function extractFeatures(realChangeset, osmchaChangesets, callback) {
     let changeset = parser(realChangeset);
-    let featureTypeCounts = getFeatureTypeCounts(changeset);
+
+    let featuresCreated = getFeaturesCreated(changeset);
+    let featuresModified = getFeaturesModified(changeset);
+    let featuresDeleted = getFeaturesDeleted(changeset);
+    let features = featuresCreated.concat(featuresModified, featuresDeleted);
+
+    let featureTypeCounts = getFeatureTypeCounts(features);
+    let primaryTagCounts = getPrimaryTagCounts(features);
 
     let changesetID = realChangeset['metadata']['id'];
     let userID = realChangeset['metadata']['uid'];
@@ -196,6 +258,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
         'way_count',
         'relation_count'
     ];
+    // Concat primary tag keys.
+    header = header.concat(PRIMARY_TAGS);
     if (!headerPrinted) {
         console.log(header.join(','));
         headerPrinted = true;
@@ -221,6 +285,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
             featureTypeCounts['way'],
             featureTypeCounts['relation']
         ];
+        // Concat primary tag counts.
+        features = features.concat(primaryTagCounts);
 
         csv.stringify([features], (error, resultsAsString) => {
             if (error) throw error;
