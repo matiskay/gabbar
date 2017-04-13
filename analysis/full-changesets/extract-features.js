@@ -12,6 +12,7 @@ const csv = require('csv');
 const path = require('path');
 const parser = require('real-changesets-parser');
 let queue = require('d3-queue').queue;
+var turf = require('@turf/turf');
 
 if (!argv.changesets) {
     console.log('');
@@ -124,6 +125,26 @@ function getUserDetails(userID) {
 }
 
 /**
+ * Returns area of bbox.
+ * @param {Object} bbox Array representing bbox in [minX, minY, maxX, maxY] order.
+ * @returns {number} Area of changeset bbox in square kilometers.
+ */
+function getBBOXArea(bbox) {
+    var polygon = turf.bboxPolygon(bbox);
+    return turf.area(polygon);
+}
+
+/**
+ * Return bbox of changeset.
+ * @param {Object} changeset Geojson representation of changeset.
+ * @returns {Object} Array representing bbox in [minX, minY, maxX, maxY] order.
+ */
+function getChangesetBBOX(changeset) {
+    let meta = changeset['metadata'];
+    return [meta['min_lat'], meta['min_lon'], meta['max_lat'], meta['max_lon']].map(parseFloat);
+}
+
+/**
  * Print features of changeset to use for machine learning.
  * @param {Object} realChangeset JSON version of changeset.
  * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
@@ -143,7 +164,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
         'user_id',
         'user_name',
         'user_changesets',
-        'user_features'
+        'user_features',
+        'changeset_bbox_area'
     ];
     if (!headerPrinted) {
         console.log(header.join(','));
@@ -165,6 +187,7 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
             realChangeset['metadata']['user'],
             userDetails['changeset_count'],
             userDetails['num_changes'],
+            getBBOXArea(getChangesetBBOX(realChangeset)),
         ];
 
         csv.stringify([features], (error, resultsAsString) => {
