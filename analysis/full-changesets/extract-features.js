@@ -255,6 +255,19 @@ function getGeometryModifications(features) {
 }
 
 /**
+ * Get sum of features versions.
+ * @param {Object} features Array of features as [[newVersion, oldVersion]].
+ * @returns {number} Sum of feature versions of all features.
+ */
+function getFeatureVersionSum(features) {
+    let version = 0;
+    for (let versions of features) {
+        version += parseInt(versions[0].properties.version);
+    }
+    return version;
+}
+
+/**
  * Print features of changeset to use for machine learning.
  * @param {Object} realChangeset JSON version of changeset.
  * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
@@ -266,10 +279,10 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
     let featuresCreated = getFeaturesCreated(changeset);
     let featuresModified = getFeaturesModified(changeset);
     let featuresDeleted = getFeaturesDeleted(changeset);
-    let features = featuresCreated.concat(featuresModified, featuresDeleted);
+    let allFeatures = featuresCreated.concat(featuresModified, featuresDeleted);
 
-    let featureTypeCounts = getFeatureTypeCounts(features);
-    let primaryTagCounts = getPrimaryTagCounts(features);
+    let featureTypeCounts = getFeatureTypeCounts(allFeatures);
+    let primaryTagCounts = getPrimaryTagCounts(allFeatures);
 
     let changesetID = realChangeset['metadata']['id'];
     let userID = realChangeset['metadata']['uid'];
@@ -289,7 +302,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
         'way_count',
         'relation_count',
         'property_modifications',
-        'geometry_modifications'
+        'geometry_modifications',
+        'feature_version_sum'
     ];
     // Concat primary tag keys.
     header = header.concat(PRIMARY_TAGS);
@@ -318,7 +332,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
             featureTypeCounts['way'],
             featureTypeCounts['relation'],
             getPropertyModifications(getFeaturesModified(changeset)).length,
-            getGeometryModifications(getFeaturesModified(changeset)).length
+            getGeometryModifications(getFeaturesModified(changeset)).length,
+            getFeatureVersionSum(allFeatures)
         ];
         // Concat primary tag counts.
         features = features.concat(primaryTagCounts);
