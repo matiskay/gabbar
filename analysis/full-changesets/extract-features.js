@@ -268,6 +268,30 @@ function getFeatureVersionSum(features) {
 }
 
 /**
+ * Return label of changeset editor.
+ * @param {Object} realChangeset JSON version of changeset.
+ * @returns {string} Editor used for the changeset.
+ */
+function getChangesetEditor(realChangeset) {
+    let changesetEditor = '';
+
+    let tags = realChangeset.metadata.tag;
+    for (let tag of tags) {
+        if (tag['k'] === 'created_by') {
+            changesetEditor = tag['v'];
+            break;
+        }
+    }
+    // Adding GNOME for Amisha! :wave:
+    let editors = ['iD', 'JOSM', 'MAPS.ME', 'Potlatch', 'Redaction bot', 'Vespucci', 'OsmAnd', 'Merkaartor', 'gnome'];
+    for (let editor of editors) {
+        if (changesetEditor.indexOf(editor) !== -1) return editors[changesetEditor.indexOf(editor)];
+    }
+    // The changeset editor does not match with any in the list.
+    return 'other';
+}
+
+/**
  * Print features of changeset to use for machine learning.
  * @param {Object} realChangeset JSON version of changeset.
  * @param {Object} osmchaChangesets Array of changesets downloaded from osmcha.
@@ -303,7 +327,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
         'relation_count',
         'property_modifications',
         'geometry_modifications',
-        'feature_version_sum'
+        'feature_version_sum',
+        'changeset_editor'
     ];
     // Concat primary tag keys.
     header = header.concat(PRIMARY_TAGS);
@@ -333,7 +358,8 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
             featureTypeCounts['relation'],
             getPropertyModifications(getFeaturesModified(changeset)).length,
             getGeometryModifications(getFeaturesModified(changeset)).length,
-            getFeatureVersionSum(allFeatures)
+            getFeatureVersionSum(allFeatures),
+            getChangesetEditor(realChangeset)
         ];
         // Concat primary tag counts.
         features = features.concat(primaryTagCounts);
