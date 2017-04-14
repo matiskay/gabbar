@@ -36,7 +36,7 @@ function downloadChangeset(changesetID, callback) {
     });
 }
 
-const q = queue(5);
+const q = queue(3);
 
 const rl = readline.createInterface({
     input: fs.createReadStream(argv.changesets),

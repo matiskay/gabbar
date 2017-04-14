@@ -64,7 +64,7 @@ let PRIMARY_TAGS = [
  */
 function isHarmful(changesetID, osmchaChangesets) {
     for (var osmchaChangeset of osmchaChangesets) {
-        if (osmchaChangeset[0] === changesetID) return osmchaChangeset[1];
+        if (osmchaChangeset[0] === changesetID) return osmchaChangeset[15];
     }
 }
 
@@ -285,7 +285,7 @@ function getChangesetEditor(realChangeset) {
     // Adding GNOME for Amisha! :wave:
     let editors = ['iD', 'JOSM', 'MAPS.ME', 'Potlatch', 'Redaction bot', 'Vespucci', 'OsmAnd', 'Merkaartor', 'gnome'];
     for (let editor of editors) {
-        if (changesetEditor.indexOf(editor) !== -1) return editors[changesetEditor.indexOf(editor)];
+        if (changesetEditor.indexOf(editor) !== -1) return editor;
     }
     // The changeset editor does not match with any in the list.
     return 'other';
@@ -381,7 +381,7 @@ function extractFeatures(realChangeset, osmchaChangesets, callback) {
  */
 function getOsmchaChangesets() {
     return new Promise((resolve, reject) => {
-        var file = fs.readFileSync(path.join(__dirname, 'full-changeset-ids.csv'));
+        var file = fs.readFileSync(path.join(__dirname, 'v2/changesets-filtered.csv'));
         csv.parse(file, (error, rows) => {
             if (error) return reject(error);
             resolve(rows);
